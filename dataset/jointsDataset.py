@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 import json
 import logging
 
-torch.set_printoptions(edgeitems=48) # delete
+from utils.utils import get_new_frame_size, resize_img_keep_ratio
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,6 @@ class JointsDataset(Dataset):
 
   def _get_db(self):
     gt_db = self._load_keypoint_annotation()
-
     return gt_db
   
   def _load_keypoint_annotation(self):
@@ -62,6 +61,7 @@ class JointsDataset(Dataset):
       for obj in objs:
         video_name = obj['name']
         frame_num = obj['frame_num']
+
         joints_3d = np.zeros((self.num_joints, 3), dtype=float)
         joints_3d_vis = np.zeros((self.num_joints, 3), dtype=float)
 
@@ -72,8 +72,8 @@ class JointsDataset(Dataset):
         width = obj['width']
         height = obj['height']
 
-        joints_3d_width, joints_3d_height = get_new_frame_size([width, height], self.image_size)
-        joints_3d_ht_width, joints_3d_ht_height = get_new_frame_size([width, height], self.heatmap_size)
+        [joints_3d_width, joints_3d_height], gap_3d = get_new_frame_size([width, height], self.image_size)
+        [joints_3d_ht_width, joints_3d_ht_height], gap_3d_ht = get_new_frame_size([width, height], self.heatmap_size)
 
         label = obj['label']
 
@@ -81,25 +81,25 @@ class JointsDataset(Dataset):
           cur_label = label[i]
 
           for j in range(self.num_joints):
-            joints_3d[j, 0] = cur_label[j * 2 + 1] * joints_3d_width
+            joints_3d[j, 0] = cur_label[j * 2 + 1] * joints_3d_width + gap_3d
             joints_3d[j, 1] = cur_label[j * 2 + 2] * joints_3d_height
             joints_3d[j, 2] = 0
 
-            # heatmap (heatmap 的大小和 image 的大小不同，所以需要生成对应的坐标，为后续生成 target joints 做准备)
-            joints_3d_ht[j, 0] = cur_label[j * 2 + 1] * joints_3d_ht_width
+            # coordinates in heatmap
+            joints_3d_ht[j, 0] = cur_label[j * 2 + 1] * joints_3d_ht_width + gap_3d_ht
             joints_3d_ht[j, 1] = cur_label[j * 2 + 2] * joints_3d_ht_height
             joints_3d_ht[j, 2] = 0
 
             t_vis = 1
             
-            if cur_label[j * 2 + 1] > 1 or cur_label[j * 2 + 1] < 0 or cur_label[j * 2 + 2] > 1 or cur_label[j * 2 + 2] < 0:
+            if cur_label[j * 2 + 1] > 1 or cur_label[j * 2 + 1] < 0 or cur_label[j * 2 + 2] > 1 or cur_label[j * 2 + 2] < 0 or (cur_label[j * 2 + 1] == 0 and cur_label[j * 2 + 2] == 0):
               t_vis = 0
             
             joints_3d_vis[j, 0] = t_vis
             joints_3d_vis[j, 1] = t_vis
             joints_3d_vis[j, 2] = 0
 
-            # heatmap
+            # visibility in heatmap
             joints_3d_ht_vis[j, 0] = t_vis
             joints_3d_ht_vis[j, 1] = t_vis
             joints_3d_ht_vis[j, 2] = 0
@@ -111,7 +111,9 @@ class JointsDataset(Dataset):
             'joints_3d_ht': copy.deepcopy(joints_3d_ht),
             'joints_3d_ht_vis': copy.deepcopy(joints_3d_ht_vis),
             'frame_num': frame_num,
-            'count': i
+            'count': i,
+            'vis_range': [joints_3d_ht_width, joints_3d_ht_height],
+            'gap': gap_3d_ht
           })
       return rec
 
@@ -138,12 +140,16 @@ class JointsDataset(Dataset):
     db_rec = copy.deepcopy(self.db[idx])
 
     video_path = db_rec['video_path']
+
     joints = db_rec['joints_3d'].copy()
     joints_vis = db_rec['joints_3d_vis'].copy()
 
     # heatmap
     joints_ht = db_rec['joints_3d_ht']
     joints_ht_vis = db_rec['joints_3d_ht_vis']
+
+    vis_range = db_rec['vis_range']
+    gap = db_rec['gap']
 
     joints_heatmap = joints_ht.copy()
 
@@ -166,6 +172,8 @@ class JointsDataset(Dataset):
       'joints': joints.copy(),
       'joints_vis': joints_vis.copy(),
       'idx': idx,
+      'vis_range': vis_range,
+      'gap': gap,
     }
 
     return input, target, target_weight, meta
@@ -193,7 +201,7 @@ class JointsDataset(Dataset):
         if target_weight[joint_id] == 0:
             continue
         
-        # 关键点的 x, y 坐标
+        # keypoint coordinates
         mu_x = joints[joint_id][0]
         mu_y = joints[joint_id][1]
         
@@ -203,45 +211,10 @@ class JointsDataset(Dataset):
 
         v = target_weight[joint_id]
         if v > 0.5:
-          # 对每个关键点生成高斯分布（以下为高斯分布生成计算公式）
+          # generate Gaussian distribution according to keypoint coordinates
           target[joint_id] = np.exp(- ((x - mu_x) ** 2 + (y - mu_y) ** 2) / (2 * self.sigma ** 2))
 
     if self.use_different_joints_weight:
       target_weight = np.multiply(target_weight, self.joints_weight)
   
     return target, target_weight
-
-# get resized frame size
-def get_new_frame_size(old_size, target_size):
-  ratio = min(float(target_size[i]) / (old_size[i]) for i in range(len(old_size)))
-  new_size = tuple([int(i*ratio) for i in old_size])
-  return new_size
-
-# resize frame and keep frame height width ratio
-def resize_img_keep_ratio(frame, target_size):
-    frame_size= frame.shape[0:2] # h, w
-    old_size = [frame_size[1], frame_size[0]] # w, h
-
-    # 计算原始图像宽高与目标图像大小的比例，并取其中的较小值
-    ratio = min(float(target_size[i]) / (old_size[i]) for i in range(len(old_size)))
-
-    # 根据上边求得的比例计算在保持比例前提下得到的图像大小
-    new_size = tuple([int(i*ratio) for i in old_size])
-
-    # 根据上边的大小进行放缩
-    frame = cv2.resize(frame,(new_size[0], new_size[1]))
-
-    # 计算需要填充的像素数目（图像的宽这一维度上）
-    pad_w = target_size[0] - new_size[0]
-
-    # 计算需要填充的像素数目（图像的高这一维度上）
-    pad_h = target_size[1] - new_size[1]
-
-    # top, bottom = pad_h // 2, pad_h - (pad_h // 2)
-    # left, right = pad_w // 2, pad_w -(pad_w // 2)
-
-    # 将空白部分填充在右边和下边，不影响 joints_3d 的坐标
-    top, bottom = 0, pad_h
-    left, right = 0, pad_w
-    frame_new = cv2.copyMakeBorder(frame, top, bottom, left, right, cv2.BORDER_CONSTANT, None,(0,0,0))
-    return frame_new

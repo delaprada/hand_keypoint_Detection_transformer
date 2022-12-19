@@ -2,12 +2,8 @@
 
 This repository is mainly built upon Pytorch. We wish to use Transformer to realize hand keypoint detection on videos.
 
-## TODO
-- [ ] Add result
-- [ ] Add visualization notebook
-
-## Update
-- 2022.11.27 Add source code and README.md
+## Architecture
+<img src="./images/framework.png" alt="drawing" width="800"/>
 
 
 ## Usage
@@ -19,3 +15,27 @@ Use [HRNet](https://openaccess.thecvf.com/content_CVPR_2019/papers/Sun_Deep_High
 ```
 python train.py --cfg ./experiments/TP_H_w48_256x192_stage3_1_4_d96_h192_relu_enc6_mh1.yaml
 ```
+
+## Result
+Performance on test set:
+
+<img src="./images/accuracy.png" alt="drawing" width="400"/>
+
+<br />
+
+Training loss:
+
+<img src="./images/training_loss.png" alt="drawing" width="400"/>
+
+<br />
+
+Compare with [Google MediaPipe](https://google.github.io/mediapipe/) on some complex scenarios:
+
+<img src="./images/compare_mp.png" alt="drawing" width="400"/>
+
+## TODO
+- [ ] Add result
+- [ ] Add visualization notebook
+
+## Update
+- 2022.11.27 Add source code and README.md

@@ -69,3 +69,40 @@ def save_checkpoint(states, is_best, output_dir,
     if is_best and 'state_dict' in states:
         torch.save(states['best_state_dict'],
                    os.path.join(output_dir, 'model_best.pth'))
+
+# get resized frame size
+def get_new_frame_size(old_size, target_size):
+  ratio = min(float(target_size[i]) / (old_size[i]) for i in range(len(old_size)))
+  new_size = tuple([int(i*ratio) for i in old_size])
+
+  pad_w = target_size[0] - new_size[0]
+  gap = pad_w // 2
+
+  return new_size, gap
+
+# resize frame and keep frame height width ratio
+def resize_img_keep_ratio(frame, target_size):
+    frame_size= frame.shape[0:2] # h, w
+    old_size = [frame_size[1], frame_size[0]] # w, h
+
+    # get min ratio
+    ratio = min(float(target_size[i]) / (old_size[i]) for i in range(len(old_size)))
+
+    # get new size of the frame according to the ratio
+    new_size = tuple([int(i*ratio) for i in old_size])
+
+    # resize frame according to new_size
+    frame = cv2.resize(frame,(new_size[0], new_size[1]))
+
+    # calculate padding on width scale
+    pad_w = target_size[0] - new_size[0]
+
+    # calculate padding on height scale
+    pad_h = target_size[1] - new_size[1]
+
+    top, bottom = pad_h // 2, pad_h - (pad_h // 2)
+    left, right = pad_w // 2, pad_w -(pad_w // 2)
+
+    frame_new = cv2.copyMakeBorder(frame, top, bottom, left, right, cv2.BORDER_CONSTANT, None,(0,0,0))
+
+    return frame_new
