@@ -5,7 +5,7 @@ This repository is mainly built upon Pytorch. We wish to use Transformer to real
 ## Architecture
 <img src="./images/framework.png" alt="drawing" width="1000"/>
 
-[[paper draft]](https://delaprada.com/lib/hand_keypoint_transformer.pdf)
+[[paper draft]](https://delaprada.com/files/hand_keypoint_transformer.pdf)
 
 ## Usage
 Use [Resnet](https://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf) as backbone:
