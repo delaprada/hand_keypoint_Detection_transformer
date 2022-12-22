@@ -7,17 +7,16 @@ This repository is mainly built upon Pytorch. We wish to use Transformer to real
 
 [[paper draft]](https://delaprada.com/files/hand_keypoint_transformer.pdf)
 
-## Usage
-Use [Resnet](https://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf) as backbone:
-```
-python train.py --cfg ./experiments/TP_R_256x192_d256_h1024_enc4_mh8.yaml
-```
-Use [HRNet](https://openaccess.thecvf.com/content_CVPR_2019/papers/Sun_Deep_High-Resolution_Representation_Learning_for_Human_Pose_Estimation_CVPR_2019_paper.pdf) as backbone:
-```
-python train.py --cfg ./experiments/TP_H_w48_256x192_stage3_1_4_d96_h192_relu_enc6_mh1.yaml
-```
+## Results
+Currently, the model is trained on 250 videos(63825 frames). Test datasets contains 106 videos(26741 frames).
 
-## Result
+(PS: The dataset is still in the labeling stage, so only part of the labeled data is used for training and testing. After the labeling is complete, all data will be used for training and testing, and the following statistic will be updated.)
+
+
+|  Model   | Backbone  |  Pretrain  | Attention Layers | d | h | head | Params | PCK@0.03 | Acceleration Error
+|  ----  | ----  |  ----  |  ----  | ----  |  ----  |  ----  | ----  |  ----  |----  |
+| Transformer Encoder | HRNet | ImageNet  | 6 | 96 | 192 | 1 | 17.5 | 0.9530040582005345 | 2.3089063  |
+
 Performance on validation set:
 
 <img src="./images/accuracy.png" alt="drawing" width="500"/>
@@ -26,13 +25,6 @@ Training loss:
 
 <img src="./images/training_loss.png" alt="drawing" width="500"/>
 
-Compare with [Google MediaPipe](https://google.github.io/mediapipe/) on some complex scenarios:
+Compare with [Google MediaPipe](https://arxiv.org/pdf/2006.10214.pdf) on some complex scenarios:
 
 <img src="./images/compare_mp.png" alt="drawing" width="400"/>
-
-## TODO
-- [ ] Add result
-- [ ] Add visualization notebook
-
-## Update
-- 2022.11.27 Add source code and README.md
