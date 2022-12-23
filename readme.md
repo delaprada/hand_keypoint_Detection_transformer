@@ -13,9 +13,9 @@ Currently, the model is trained on 250 videos(63825 frames). Test datasets conta
 (PS: The dataset is still in the labeling stage, so only part of the labeled data is used for training and testing. After the labeling is complete, all data will be used for training and testing, and the following statistic will be updated.)
 
 
-|  Model   | Backbone  |  Pretrain  | Attention Layers | d | h | head | Params | PCK@0.03 | Acceleration Error
+|  Model   | Backbone  |  Pretrain  | Attention Layers | d | h | head | Params(Mb) | PCK@0.03 | Acceleration Error
 |  ----  | ----  |  ----  |  ----  | ----  |  ----  |  ----  | ----  |  ----  |----  |
-| Transformer Encoder | HRNet | ImageNet  | 6 | 96 | 192 | 1 | 17.5 | 0.9530040582005345 | 2.3089063  |
+| Transformer Encoder | HRNet | ImageNet  | 6 | 96 | 192 | 1 | 17.5 | 0.953 | 2.31  |
 
 Performance on validation set:
 
